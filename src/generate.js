@@ -2,13 +2,6 @@ const os = require('os');
 
 // const
 let INTERFACE_REQ_DATA = {};
-/* 
-  getUserListReq: {
-    email_keyword: { type: 'string', require: false, desc: '邮箱号模糊搜索关键词' },
-    user_roles: { type: 'string', require: false, desc: '用户类型, 多个值以逗号分隔 4：QA' },
-    exclude_user_roles: { type: 'string', require: false, desc: '排除的用户类型, 多个值以逗号分隔' }
-  }
-*/
 let INTERFACE_RES_DATA = {};
 let INTERFACE_REQUIRE_FLAG = [];
 let REQUEST_FUNC_DATA = [];
@@ -17,7 +10,6 @@ module.exports = function generate(json) {
   const interface_defines = json.definitions;
   const interface_paths = json.paths;
 
-  // TODO: 生成接口代码
   analysisPaths(interface_paths, (err) => {
     if (err) throw err;
   });
@@ -30,10 +22,6 @@ module.exports = function generate(json) {
 };
 
 function analysisResult() {
-  // console.log(INTERFACE_REQ_DATA);
-  // console.log(INTERFACE_RES_DATA);
-  // console.log(INTERFACE_REQUIRE_FLAG);
-  // console.log(REQUEST_FUNC_DATA);
   let result = `import request from './request';${os.EOL}${os.EOL}`;
 
   const result1 = loopInterRes(INTERFACE_REQ_DATA);
@@ -266,9 +254,7 @@ function createNameFromPath(method, name, type) {
 
 function createNameFromRef(ref) {
   /* 
-    #/definitions/image_build.Info
-    input: #/definitions/demand.UpdateAppStatusReq
-    input: #/definitions/image_build.BoolResp
+    input: #/definitions/demand.UpdateAppStatusReq  #/definitions/image_build.BoolResp
     output: DemandUpdateAppStatusReq
   */
   const str = ref.split('/')[2];
