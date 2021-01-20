@@ -80,7 +80,6 @@ function loopFunction(data) {
     result += `export const ${item.name} = () => {
   return request.${item.method}<${item.reqType || '{}'}, ${item.resType}>('${item.path}', { bodyType: '${item.requestType}' });
 };`
-    console.log(item);
   });
 
   return result;

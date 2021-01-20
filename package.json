@@ -4,7 +4,7 @@
   "description": "",
   "main": "/src/index.js",
   "scripts": {
-    "api": "node src/index create https://example/swagger/swagger.json ./dist/api.ts"
+    "api": "node src/index create https://example.com/swagger/swagger.json ./dist/api.ts"
   },
   "keywords": [
     "swagger"
