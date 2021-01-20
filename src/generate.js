@@ -1,135 +1,326 @@
 const os = require('os');
 
+// const
+let INTERFACE_REQ_DATA = {};
 /* 
-  接口方法元数据: requestFuncArr = [
-    {
-      name: 'postAppCreate,
-      path: '/app/create',
-      dataType: 'json',
-      summary: '接口作用注释'
-      reqType: AppCreateReq || 生成interface并指定名字
-      resType:AppBoolResp || 生成interface并指定名字
-    }
-  ]
-
-  必选接口元数据: requestRequiredArr = [
-    'AppCreateReq', ...
-  ]
-
-  req interface元数据(生成时判断是否必选): interfaceReqArr = ['result字符串', ...]
-
-  res interface元数据: interfaceResArr = ['result字符串', ...]
-
-
+  getUserListReq: {
+    email_keyword: { type: 'string', require: false, desc: '邮箱号模糊搜索关键词' },
+    user_roles: { type: 'string', require: false, desc: '用户类型, 多个值以逗号分隔 4：QA' },
+    exclude_user_roles: { type: 'string', require: false, desc: '排除的用户类型, 多个值以逗号分隔' }
+  }
 */
+let INTERFACE_RES_DATA = {};
+let INTERFACE_REQUIRE_FLAG = [];
+let REQUEST_FUNC_DATA = [];
 
-/* 
-  - 循环paths, 每次循环, 加入到一个数组里
-    1. get或者post
-    2. 有parameters的话,循环参数arr, 
-        有schema的话, 使用definitions[renderType(schema.$ref)]指定<interface>, 在requestInterfaceRequired数组里添加此interface是否必选 
-        没有schema, 生成interface, 处理是否必选, push进interfaceReqArray
-    3. consumes处理header
-    4. 根据responses.200生成response interface, push进interfaceResArray
+module.exports = function generate(json) {
+  const interface_defines = json.definitions;
+  const interface_paths = json.paths;
 
-  - 把所有元数据转换成字符串返回
+  // TODO: 生成接口代码
+  analysisPaths(interface_paths, (err) => {
+    if (err) throw err;
+  });
+  analysisDefines(interface_defines, (err2) => {
+    if (err2) throw err;
+  });
 
-*/
-
-module.exports = function generate(dataJson) {
-  // 先生成接口请求JSON, 再生成代码, 生成interface时可以判断接口参数是否必须
-  const requestCode = generateRequestCode(dataJson.paths)
-  // console.log(requestCode);
-
-
-  // 根据definitions生成interface
-  const interfaces = generateInterface(dataJson.definitions, dataJson.paths);
-
-  return interfaces;
+  const result = analysisResult();
+  return result;
 };
 
-function generateRequestCode(paths) {
-  for (const pathName in paths) {
-    const requestBody = paths[pathName].hasOwnProperty('get') ? paths[pathName].get : paths[pathName].post
+function analysisResult() {
+  // console.log(INTERFACE_REQ_DATA);
+  // console.log(INTERFACE_RES_DATA);
+  // console.log(INTERFACE_REQUIRE_FLAG);
+  // console.log(REQUEST_FUNC_DATA);
+  let result = `import request from './request';${os.EOL}${os.EOL}`;
 
+  const result1 = loopInterRes(INTERFACE_REQ_DATA);
+  const result2 = loopInterReq(INTERFACE_RES_DATA);
+  const result3 = loopFunction(REQUEST_FUNC_DATA);
 
-    if (requestBody.hasOwnProperty('schema')) {
-      // 使用definitions的类型
-      const _type = renderType(requestBody.schema.$ref)
-    } else {
-      // 新生成
-
-    }
-    
-  }
-}
-
-function generateInterface(definitions) {
-  let result = '';
-  for (const interfaceName in definitions) {
-    const _interfaceName = renderName(interfaceName);
-    result += `export interface ${_interfaceName} { ${os.EOL}`;
-
-    // 增加一个interface
-    const properties = definitions[interfaceName].properties;
-
-    for (const proKey in properties) {
-      if (properties.hasOwnProperty(proKey)) {
-        // 查找此接口参数是否为必传
-
-
-
-        const proObject = properties[proKey];
-        // 注释
-        const desc = proObject.description ? `  /* ${proObject.description} */${os.EOL}` : '';
-
-        // 类型
-        let _type = '';
-        if (proObject.type === 'object') {
-          if (proObject.hasOwnProperty('$ref')) {
-            _type = renderName(proObject.$ref);
-          } else {
-            // 未说明类型
-            _type = 'any';
-          }
-        } else if (proObject.type === 'array') {
-          _type = proObject.items.hasOwnProperty('$ref')
-            ? `Array<${renderName(proObject.items.$ref)}>`
-            : `Array<${renderType(proObject.items.type)}>`;
-        } else {
-          _type = renderType(proObject.type);
-        }
-
-        result += `${desc}  ${proKey}: ${_type};${os.EOL}`;
-      }
-    }
-    result += `}${os.EOL}${os.EOL}`;
-  }
+  result += result1;
+  result += result2;
+  result += result3;
 
   return result;
 }
 
-// 处理interface name
-function renderName(name) {
-  let arr = [];
-  if (name.indexOf('#') > -1) {
-    const splitArr = name.split('/');
-    const len = splitArr.length;
-    arr = splitArr[len - 1].split('.');
-  } else {
-    arr = name.split('.');
+function loopInterRes(data) {
+  let result = '';
+  for (const interfaceName in data) {
+    if (Object.hasOwnProperty.call(data, interfaceName)) {
+      const element = data[interfaceName];
+      result += `export interface ${interfaceName} { ${os.EOL}`;
+
+      const isRequire = INTERFACE_REQUIRE_FLAG.includes(interfaceName);
+
+      for (const proName in element) {
+        if (Object.hasOwnProperty.call(element, proName)) {
+          const proBody = element[proName];
+          result += proBody.desc ? `  /* ${proBody.desc} */${os.EOL}` : '';
+          result += `  ${proName}${proBody.require || isRequire ? '' : '?'}: ${proBody.type};${
+            os.EOL
+          }`;
+        }
+      }
+      result += `}${os.EOL}${os.EOL}`;
+    }
+  }
+  return result;
+}
+
+function loopInterReq(data) {
+  let result = '';
+  for (const interfaceName in data) {
+    if (Object.hasOwnProperty.call(data, interfaceName)) {
+      const element = data[interfaceName];
+      result += `export type ${interfaceName} = ${element.type} ${os.EOL}`;
+    }
+  }
+  return result;
+}
+
+function loopFunction(data) {
+  let result = '';
+  data.forEach((item) => {
+    result += item.summary ? `${os.EOL}/* 
+  ${item.summary}
+  ${item.desc === item.summary ? '' : item.desc}
+*/${os.EOL}` : '';
+    result += `export const ${item.name} = () => {
+  return request.${item.method}<${item.reqType || '{}'}, ${item.resType}>('${item.path}', { bodyType: '${item.requestType}' });
+};`
+    console.log(item);
+  });
+
+  return result;
+}
+
+function analysisPaths(paths, callback) {
+  if (!paths) {
+    callback(new Error('json文件中未找到接口定义, 请检查'));
   }
 
-  return nameCase(arr[0]) + arr[1];
+  for (const pathName in paths) {
+    if (Object.hasOwnProperty.call(paths, pathName)) {
+      let _REQ_NAME = '';
+      let _RES_NAME = '';
+      const pathContent = paths[pathName];
+      const pathMethod = pathContent.hasOwnProperty('get') ? 'get' : 'post';
+      const pathBody = pathContent[pathMethod];
+
+      const pathConsume = pathBody.consumes
+        ? pathBody.consumes[0]
+        : 'application/x-www-form-urlencoded'; // 接口header
+      const pathSummary = pathBody.summary; // 接口作用
+      const pathDesc = pathBody.description || ''; // 接口说明
+      const pathParams = pathBody.parameters || null;
+      const pathResponse = pathBody.responses['200'] || null;
+
+      // 处理params
+      if (pathParams) {
+        if (pathParams.length === 1 && pathParams[0].name === 'entity') {
+          // 有实体定义, 标记interfaceName记录即可
+          const isRequired = pathParams[0].hasOwnProperty('required') || false;
+          const _ref = pathParams[0].schema.$ref;
+          const _refName = createNameFromRef(_ref);
+
+          _REQ_NAME = _refName;
+
+          if (isRequired) INTERFACE_REQUIRE_FLAG.push(_refName);
+        } else {
+          // 生成interface对象
+          let interfaceContent = {};
+          pathParams.forEach((item) => {
+            interfaceContent[item.name] = {
+              type: exchangeType(item.type),
+              require: item.hasOwnProperty('required') || false,
+              desc: item.description || '',
+            };
+          });
+
+          const interfaceName = createNameFromPath(pathMethod, pathName, 1);
+          _REQ_NAME = interfaceName;
+          INTERFACE_REQ_DATA[interfaceName] = interfaceContent;
+        }
+      }
+
+      // 处理response
+      if (pathResponse) {
+        if (pathResponse.hasOwnProperty('schema')) {
+          if (pathResponse.schema.hasOwnProperty('type')) {
+            const _ref = pathResponse.schema.items.$ref;
+            const _refName = createNameFromRef(_ref);
+
+            // 生成interface对象
+            let interfaceContent = {
+              type: `Array<${_refName}>`,
+              desc: pathResponse.description || '',
+            };
+
+            const interfaceName = `${pathMethod}${_refName}`;
+            _RES_NAME = interfaceName;
+            INTERFACE_RES_DATA[interfaceName] = interfaceContent;
+          } else {
+            const _ref = pathResponse.schema.$ref;
+            const _refName = createNameFromRef(_ref);
+
+            // 生成interface对象
+            let interfaceContent = {
+              type: _refName,
+              desc: pathResponse.description || '',
+            };
+
+            const interfaceName = `${pathMethod}${_refName}`;
+            _RES_NAME = interfaceName;
+            INTERFACE_RES_DATA[interfaceName] = interfaceContent;
+          }
+        }
+      }
+
+      // 生成代码json
+      const codeObj = {
+        summary: pathSummary,
+        desc: pathDesc,
+        name: createNameFromPath(pathMethod, pathName, 2),
+        path: pathName,
+        method: pathMethod,
+        requestType: pathConsume === 'application/x-www-form-urlencoded' ? 'formData' : 'json',
+        reqType: _REQ_NAME,
+        resType: _RES_NAME,
+      };
+      REQUEST_FUNC_DATA.push(codeObj);
+    }
+  }
+}
+
+function analysisDefines(defines, callback) {
+  if (!defines) {
+    callback(new Error('json文件中未找到类型定义, 请检查'));
+  }
+
+  for (const define in defines) {
+    let interfaceObj = {};
+    const interfaceName = createNameFromDefine(define);
+    const defineBody = defines[define];
+
+    for (const defName in defineBody.properties) {
+      const proObject = defineBody.properties[defName];
+      let subObj = {};
+
+      let _type = '';
+      if (proObject.type === 'object') {
+        if (proObject.hasOwnProperty('$ref')) {
+          _type = createNameFromRef(proObject.$ref);
+        } else {
+          // 未说明类型
+          _type = 'any';
+        }
+      } else if (proObject.type === 'array') {
+        _type = proObject.items.hasOwnProperty('$ref')
+          ? `Array<${createNameFromRef(proObject.items.$ref)}>`
+          : `Array<${exchangeType(proObject.items.type)}>`;
+      } else {
+        _type = exchangeType(proObject.type);
+      }
+
+      subObj = {
+        desc: proObject.description || '',
+        type: _type,
+      };
+      interfaceObj[defName] = subObj;
+    }
+
+    INTERFACE_REQ_DATA[interfaceName] = interfaceObj;
+  }
+}
+
+function createNameFromPath(method, name, type) {
+  /* 
+    input: /app/pro-released-apps   /app/list
+    output: DemandUpdateAppStatusReq
+    type: 1 params 2 ajax func
+  */
+  const strArr = name.split('/');
+  let result = `${method === 'get' ? 'get' : 'post'}${nameCase(strArr[1])}`;
+  for (let index = 2; index < strArr.length; index++) {
+    const element = strArr[index];
+    if (element.indexOf('-') > -1) {
+      const subStrArr = element.split('-');
+      let subResult = '';
+      subStrArr.forEach((item) => {
+        subResult += nameCase(item);
+      });
+      result += subResult;
+    } else {
+      result += nameCase(element);
+    }
+  }
+
+  result += type === 1 ? 'Req' : '';
+
+  return result;
+}
+
+function createNameFromRef(ref) {
+  /* 
+    #/definitions/image_build.Info
+    input: #/definitions/demand.UpdateAppStatusReq
+    input: #/definitions/image_build.BoolResp
+    output: DemandUpdateAppStatusReq
+  */
+  const str = ref.split('/')[2];
+  const arr = str.split('.');
+
+  let result = '';
+  for (let index = 0; index < arr.length; index++) {
+    const element = arr[index];
+    if (element.indexOf('_') > -1) {
+      const subStrArr = element.split('_');
+      let subResult = '';
+      subStrArr.forEach((item) => {
+        subResult += nameCase(item);
+      });
+      result += subResult;
+    } else {
+      result += nameCase(element);
+    }
+  }
+  return result;
+}
+
+function createNameFromDefine(name) {
+  /* 
+    input: image_build.Info  env.UpdateRequest
+    output: ImageBuildInfo
+  */
+  let result = '';
+  const arr = name.split('.');
+
+  arr.forEach((item) => {
+    if (item.indexOf('_') > -1) {
+      const subArr = item.split('_');
+      let subResult = '';
+      subArr.forEach((subItem) => {
+        subResult += nameCase(subItem);
+      });
+      result += subResult;
+    } else {
+      result += nameCase(item);
+    }
+  });
+
+  return result;
 }
 
 // 首字母大写
 function nameCase(str) {
-  newStr = str.slice(0, 1).toUpperCase() + str.slice(1).toLowerCase();
-  return newStr;
+  return str.slice(0, 1).toUpperCase() + str.slice(1);
 }
 
 // 转换integer类型为number类型
-function renderType(type) {
+function exchangeType(type) {
   return type === 'integer' ? 'number' : type;
 }

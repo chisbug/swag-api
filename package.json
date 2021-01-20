@@ -4,7 +4,7 @@
   "description": "",
   "main": "/src/index.js",
   "scripts": {
-    "api": "node src/index create https://med-one-qa.medlinker.com/swagger/swagger.json ./src/api/api.ts"
+    "api": "node src/index create https://med-one-qa.medlinker.com/swagger/swagger.json ./dist/api.ts"
   },
   "keywords": [
     "swagger"
