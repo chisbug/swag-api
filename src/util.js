@@ -39,14 +39,15 @@ function nameCase(str) {
 /**
  * @function 转换integer为number
  * @param {
-  *   type: 一个定义普通类型的字符串
-  * }
-  */
- function exchangeType(type) {
-   return type === 'integer' ? 'number' : type;
- }
- 
+ *   type: 一个定义普通类型的字符串
+ * }
+ */
+function exchangeType(type) {
+  return type === 'integer' ? 'number' : type;
+}
 
-module.exports.generateCamelName = generateCamelName;
-module.exports.nameCase = nameCase;
-module.exports.exchangeType = exchangeType;
+module.exports = {
+  generateCamelName,
+  nameCase,
+  exchangeType,
+};

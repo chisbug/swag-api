@@ -1,6 +1,6 @@
 /**
  * @module generate core method
- * @author Ch 
+ * @author Ch
  */
 const os = require('os');
 const util = require('./util');
