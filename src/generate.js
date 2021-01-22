@@ -138,7 +138,7 @@ function analysisPaths(paths, resultJson) {
           let interfaceContent = {};
           pathParams.forEach((item) => {
             interfaceContent[item.name] = {
-              type: exchangeType(item.type),
+              type: util.exchangeType(item.type),
               required: item.hasOwnProperty('required') ? item.required : false,
               desc: item.description || '',
             };
@@ -213,12 +213,12 @@ function analysisDefines(defines, resultJson) {
       } else if (proObject.type === 'array') {
         _type = proObject.items.hasOwnProperty('$ref')
           ? `${util.generateCamelName(proObject.items.$ref)}[]`
-          : `${exchangeType(proObject.items.type)}[]`;
+          : `${util.exchangeType(proObject.items.type)}[]`;
       } else {
         if (proObject.hasOwnProperty('$ref')) {
           _type = util.generateCamelName(proObject.$ref);
         } else {
-          _type = exchangeType(proObject.type);
+          _type = util.exchangeType(proObject.type);
         }
       }
 
@@ -238,14 +238,4 @@ function analysisDefines(defines, resultJson) {
   }
 
   return resultJson;
-}
-
-/**
- * @function 转换integer为number
- * @param {
- *   type: 一个定义普通类型的字符串
- * }
- */
-function exchangeType(type) {
-  return type === 'integer' ? 'number' : type;
 }
