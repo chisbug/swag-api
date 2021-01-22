@@ -2,9 +2,15 @@
 
 
 
-#### usage
+#### install
 
 ```bash
-npm run api
+yarn install
+```
+
+#### create
+
+```bash
+yarn api
 ```
 
