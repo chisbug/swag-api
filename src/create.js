@@ -18,14 +18,16 @@ module.exports = async (url, filePath) => {
   logY('📎 获取swagger.json: ' + url);
 
   const dataJson = await request(url);
-  const result = await generate(dataJson);
+  const result = generate(dataJson);
 
   logG('⚙️  开始生成代码');
+  
   fs.writeFile(filePath, result, 'utf8', (err) => {
     if (err !== null) {
       console.log(err);
       return;
     }
+
     logB(`🗄️  文件已保存在: [${filePath}]`);
     logB(`✔️  完成`);
     console.log('---------------------------------------------------------------------');

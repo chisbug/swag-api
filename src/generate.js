@@ -1,55 +1,65 @@
 /**
- * ? generate core
- * *  @author Ch
+ * @module generate core method
+ * @author Ch 
  */
 const os = require('os');
 const util = require('./util');
 
-// const
-let INTERFACE_JSON = {};
-let FUNCTION_LIST = [];
-let INTERFACE_REQUIRED_JSON = {};
-
 module.exports = function generate(json) {
-  const interface_defines = json.definitions;
-  const interface_paths = json.paths;
+  const { paths, definitions } = json;
 
-  analysisPaths(interface_paths, (err) => {
-    if (err) throw err;
-  });
-  analysisDefines(interface_defines, (err2) => {
-    if (err2) throw err;
-  });
+  let resultJson = {
+    interfaceData: {},
+    functionData: [],
+  };
 
-  const finalResult = analysisResult();
+  analysisPaths(paths, resultJson);
+  analysisDefines(definitions, resultJson);
+
+  const finalResult = analysisResult(resultJson);
   return finalResult;
 };
 
-function analysisResult() {
+/**
+ * @function 将处理好的json元数据转为可输出的字符串
+ * @param {
+ *   resultJson: {
+ *     interfaceData: {},
+ *     functionData: [],
+ *   }
+ * }
+ */
+function analysisResult(resultJson) {
   let result = `import request from './request';${os.EOL}${os.EOL}`;
 
-  result += createStringFromInterfaceJSON(INTERFACE_JSON);
-  result += createStringFromFunctionJSON(FUNCTION_LIST);
+  const interfaceStr = createStringFromInterfaceJSON(resultJson.interfaceData);
+  const functionStr = createStringFromFunctionJSON(resultJson.functionData);
 
-  return result;
+  return result + interfaceStr + functionStr;
 }
 
+/**
+ * @function 把interface对象数据转换为可输出的字符串
+ * @param {
+ *   data: Record<string, unknown> interface对象
+ * }
+ */
 function createStringFromInterfaceJSON(data) {
   let result = '';
   for (const interfaceName in data) {
     if (Object.hasOwnProperty.call(data, interfaceName)) {
       const element = data[interfaceName];
+
       result += `export interface ${interfaceName} { ${os.EOL}`;
 
-      const isRequire = INTERFACE_REQUIRED_JSON[interfaceName];
+      const isRequired = element.hasOwnProperty('isRequired') ? element.isRequired : false;
 
-      for (const proName in element) {
-        if (Object.hasOwnProperty.call(element, proName)) {
-          const proBody = element[proName];
+      for (const proName in element.content) {
+        if (Object.hasOwnProperty.call(element.content, proName)) {
+          const proBody = element.content[proName];
+          const isWenhao = isRequired ? '' : `${proBody.required === true ? '' : '?'}`;
           result += proBody.desc ? `  /* ${proBody.desc} */${os.EOL}` : '';
-          result += `  ${proName}${proBody.require || isRequire ? '' : '?'}: ${proBody.type};${
-            os.EOL
-          }`;
+          result += `  ${proName}${isWenhao}: ${proBody.type};${os.EOL}`;
         }
       }
       result += `}${os.EOL}${os.EOL}`;
@@ -58,31 +68,40 @@ function createStringFromInterfaceJSON(data) {
   return result;
 }
 
+/**
+ * @function 把function对象列表转换为可输出的字符串
+ * @param {
+ *   data: Record<string, unknown>[] function对象列表
+ * }
+ */
 function createStringFromFunctionJSON(data) {
   let result = '';
   data.forEach((item) => {
     result += item.summary
-      ? `${os.EOL}/* 
-  ${item.summary}
-  ${item.desc === item.summary ? '' : item.desc}
-*/${os.EOL}`
+      ? `${os.EOL}/** 
+ * @function ${item.summary}${item.desc === item.summary ? '' : `${os.EOL} * @summary ${item.desc}`}
+ */${os.EOL}`
       : '';
     result += `export const ${item.name} = () => {
   return request.${item.method}<${item.reqType || '{}'}, ${item.resType}>('${
       item.path
     }', { bodyType: '${item.requestType}' });
-};`;
+};${os.EOL}`;
   });
 
   return result;
 }
 
-/* 
-  处理path
-*/
-function analysisPaths(paths, callback) {
+/**
+ * @function 解析swagger.json[paths]
+ * @param {
+ *   paths: swagger.json[paths]
+ *   resultJson: 一个来自外部的通用空对象
+ * }
+ */
+function analysisPaths(paths, resultJson) {
   if (!paths) {
-    callback(new Error('json文件中未找到接口定义, 请检查'));
+    throw new Error('json文件中未找到接口定义, 请检查');
   }
 
   for (const pathName in paths) {
@@ -104,24 +123,30 @@ function analysisPaths(paths, callback) {
       // 处理params
       if (pathParams) {
         if (pathParams.length === 1 && pathParams[0].name === 'entity') {
-          // 有ref, 只需标记这个ref是否参数必填
-          const isRequired = pathParams[0].hasOwnProperty('required') || false;
+          // 参数有定义ref
+          const isRequired = pathParams[0].hasOwnProperty('required')
+            ? pathParams[0].required
+            : false;
           const _ref = pathParams[0].schema.$ref;
           requestInterfaceName = util.generateCamelName(_ref);
 
-          INTERFACE_REQUIRED_JSON[requestInterfaceName] = isRequired;
+          // 新建一个空对象, 并标记这个interface对象是否必填
+          let newInterface = { isRequired: isRequired };
+          resultJson.interfaceData[requestInterfaceName] = newInterface;
         } else {
+          // 没有定义ref, 新建一个对象
           let interfaceContent = {};
           pathParams.forEach((item) => {
             interfaceContent[item.name] = {
               type: exchangeType(item.type),
-              require: item.hasOwnProperty('required') || false,
+              required: item.hasOwnProperty('required') ? item.required : false,
               desc: item.description || '',
             };
           });
 
           requestInterfaceName = `${pathMethod}${util.generateCamelName(pathName)}Request`;
-          INTERFACE_JSON[requestInterfaceName] = interfaceContent;
+          let newInterface = { content: interfaceContent };
+          resultJson.interfaceData[requestInterfaceName] = newInterface;
         }
       }
 
@@ -133,11 +158,11 @@ function analysisPaths(paths, callback) {
             const _ref = pathResponse.schema.items.$ref;
             const interfaceName = util.generateCamelName(_ref);
             responseInterfaceName = `${interfaceName}[]`;
-            INTERFACE_REQUIRED_JSON[interfaceName] = false;
+            resultJson.interfaceData[interfaceName] = { isRequired: true };
           } else {
             const _ref = pathResponse.schema.$ref;
             responseInterfaceName = util.generateCamelName(_ref);
-            INTERFACE_REQUIRED_JSON[responseInterfaceName] = false;
+            resultJson.interfaceData[responseInterfaceName] = { isRequired: true };
           }
         }
       }
@@ -153,17 +178,23 @@ function analysisPaths(paths, callback) {
         reqType: requestInterfaceName,
         resType: responseInterfaceName,
       };
-      FUNCTION_LIST.push(codeObj);
+      resultJson.functionData.push(codeObj);
     }
   }
+
+  return resultJson;
 }
 
-/* 
-  处理定义的ref
-*/
-function analysisDefines(defines, callback) {
+/**
+ * @function 解析swagger.json[definitions]
+ * @param {
+ *   paths: swagger.json[definitions]
+ *   resultJson: 一个来自外部的通用空对象
+ * }
+ */
+function analysisDefines(defines, resultJson) {
   if (!defines) {
-    callback(new Error('json文件中未找到类型定义, 请检查'));
+    throw new Error('json文件中未找到类型定义, 请检查');
   }
 
   for (const define in defines) {
@@ -199,11 +230,22 @@ function analysisDefines(defines, callback) {
       interfaceObj[defName] = subObj;
     }
 
-    INTERFACE_JSON[interfaceName] = interfaceObj;
+    if (resultJson.interfaceData.hasOwnProperty(interfaceName)) {
+      resultJson.interfaceData[interfaceName].content = interfaceObj;
+    } else {
+      resultJson.interfaceData[interfaceName] = { content: interfaceObj };
+    }
   }
+
+  return resultJson;
 }
 
-// 转换integer类型为number类型
+/**
+ * @function 转换integer为number
+ * @param {
+ *   type: 一个定义普通类型的字符串
+ * }
+ */
 function exchangeType(type) {
   return type === 'integer' ? 'number' : type;
 }
