@@ -1,7 +1,7 @@
 {
-  "name": "swapi",
+  "name": "swagApi",
   "version": "0.0.1",
-  "description": "",
+  "description": "swagger.json to ts api",
   "main": "index.js",
   "bin": {
     "swagApi": "node ./index.js"
