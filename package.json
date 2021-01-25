@@ -1,8 +1,12 @@
 {
   "name": "@chist/swag-api",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "swagger.json to ts api",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chisbug/swag-api.git"
+  },
   "bin": {
     "swagApi": "./index.js"
   },
