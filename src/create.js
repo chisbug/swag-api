@@ -32,7 +32,7 @@ module.exports = async (url, filePath) => {
         console.log(err);
         return;
       }
-  
+
       logB(`🗄️  文件已保存在: ${path.resolve('./', filePath)}`);
       logB(`✔️  完成`);
       console.log('---------------------------------------------------------------------');
