@@ -22,12 +22,7 @@ module.exports = function generate(json) {
 
 /**
  * @function 将处理好的json元数据转为可输出的字符串
- * @param {
- *   resultJson: {
- *     interfaceData: {},
- *     functionData: [],
- *   }
- * }
+ * @param resultJson: {}
  */
 function analysisResult(resultJson) {
   let result = `import request from './request';${os.EOL}${os.EOL}`;
@@ -40,9 +35,7 @@ function analysisResult(resultJson) {
 
 /**
  * @function 把interface对象数据转换为可输出的字符串
- * @param {
- *   data: Record<string, unknown> interface对象
- * }
+ * @param data: interface json数据
  */
 function createStringFromInterfaceJSON(data) {
   let result = '';
@@ -52,14 +45,14 @@ function createStringFromInterfaceJSON(data) {
 
       result += `export interface ${interfaceName} { ${os.EOL}`;
 
-      const isRequired = element.hasOwnProperty('isRequired') ? element.isRequired : false;
+      for (const proName in element) {
+        if (Object.hasOwnProperty.call(element, proName)) {
+          const proBody = element[proName];
 
-      for (const proName in element.content) {
-        if (Object.hasOwnProperty.call(element.content, proName)) {
-          const proBody = element.content[proName];
-          const isWenhao = isRequired ? '' : `${proBody.required === true ? '' : '?'}`;
           result += proBody.desc ? `  /* ${proBody.desc} */${os.EOL}` : '';
-          result += `  ${proName}${isWenhao}: ${proBody.type};${os.EOL}`;
+          result += `  ${proName}${proBody.required === false ? '?' : ''}: ${proBody.type};${
+            os.EOL
+          }`;
         }
       }
       result += `}${os.EOL}${os.EOL}`;
@@ -70,16 +63,16 @@ function createStringFromInterfaceJSON(data) {
 
 /**
  * @function 把function对象列表转换为可输出的字符串
- * @param {
- *   data: Record<string, unknown>[] function对象列表
- * }
+ * @param data: function 数据列表
  */
 function createStringFromFunctionJSON(data) {
   let result = '';
   data.forEach((item) => {
     result += item.summary
       ? `${os.EOL}/** 
- * @function ${item.summary}${item.desc === item.summary ? '' : `${os.EOL} * @summary ${item.desc}`}
+ * @function ${item.summary}${
+          item.desc === item.summary || item.desc === '' ? '' : `${os.EOL} * @summary ${item.desc}`
+        }
  */${os.EOL}`
       : '';
     result += `export const ${item.name} = () => {
@@ -94,10 +87,8 @@ function createStringFromFunctionJSON(data) {
 
 /**
  * @function 解析swagger.json[paths]
- * @param {
- *   paths: swagger.json[paths]
- *   resultJson: 一个来自外部的通用空对象
- * }
+ * @params paths: swagger.json[paths]
+ *         resultJson: 一个来自外部的通用空对象
  */
 function analysisPaths(paths, resultJson) {
   if (!paths) {
@@ -120,21 +111,10 @@ function analysisPaths(paths, resultJson) {
       const pathParams = pathBody.parameters || null;
       const pathResponse = pathBody.responses['200'] || null;
 
-      // 处理params
+      // params
       if (pathParams) {
-        if (pathParams.length === 1 && pathParams[0].name === 'entity') {
-          // 参数有定义ref
-          const isRequired = pathParams[0].hasOwnProperty('required')
-            ? pathParams[0].required
-            : false;
-          const _ref = pathParams[0].schema.$ref;
-          requestInterfaceName = util.generateCamelName(_ref);
-
-          // 新建一个空对象, 并标记这个interface对象是否必填
-          let newInterface = { isRequired: isRequired };
-          resultJson.interfaceData[requestInterfaceName] = newInterface;
-        } else {
-          // 没有定义ref, 新建一个对象
+        if (pathParams.length && pathParams[0].name !== 'entity') {
+          // 未定义ref, 创建一条数据
           let interfaceContent = {};
           pathParams.forEach((item) => {
             interfaceContent[item.name] = {
@@ -145,12 +125,11 @@ function analysisPaths(paths, resultJson) {
           });
 
           requestInterfaceName = `${pathMethod}${util.generateCamelName(pathName)}Request`;
-          let newInterface = { content: interfaceContent };
-          resultJson.interfaceData[requestInterfaceName] = newInterface;
+          resultJson.interfaceData[requestInterfaceName] = interfaceContent;
         }
       }
 
-      // 处理response
+      // response
       if (pathResponse) {
         if (pathResponse.hasOwnProperty('schema')) {
           if (pathResponse.schema.hasOwnProperty('type') && pathResponse.schema.type === 'array') {
@@ -158,11 +137,9 @@ function analysisPaths(paths, resultJson) {
             const _ref = pathResponse.schema.items.$ref;
             const interfaceName = util.generateCamelName(_ref);
             responseInterfaceName = `${interfaceName}[]`;
-            resultJson.interfaceData[interfaceName] = { isRequired: true };
           } else {
             const _ref = pathResponse.schema.$ref;
             responseInterfaceName = util.generateCamelName(_ref);
-            resultJson.interfaceData[responseInterfaceName] = { isRequired: true };
           }
         }
       }
@@ -187,10 +164,8 @@ function analysisPaths(paths, resultJson) {
 
 /**
  * @function 解析swagger.json[definitions]
- * @param {
- *   paths: swagger.json[definitions]
- *   resultJson: 一个来自外部的通用空对象
- * }
+ * @params paths: swagger.json[definitions]
+ *         resultJson: 一个来自外部的通用空对象
  */
 function analysisDefines(defines, resultJson) {
   if (!defines) {
@@ -230,11 +205,7 @@ function analysisDefines(defines, resultJson) {
       interfaceObj[defName] = subObj;
     }
 
-    if (resultJson.interfaceData.hasOwnProperty(interfaceName)) {
-      resultJson.interfaceData[interfaceName].content = interfaceObj;
-    } else {
-      resultJson.interfaceData[interfaceName] = { content: interfaceObj };
-    }
+    resultJson.interfaceData[interfaceName] = interfaceObj;
   }
 
   return resultJson;
