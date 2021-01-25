@@ -1,5 +1,5 @@
 {
-  "name": "swagApi",
+  "name": "swag-api",
   "version": "0.0.1",
   "description": "swagger.json to ts api",
   "main": "index.js",
