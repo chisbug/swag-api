@@ -4,7 +4,7 @@ const { Command } = require('commander');
 const program = new Command();
 
 program
-  .version('0.0.1', '-V, --version')
+  .version('0.0.5', '-v, --version')
   .command('create <url> <path>')
   .action(require('./src/create'));
 

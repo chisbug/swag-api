@@ -1,10 +1,10 @@
 {
-  "name": "swag-api",
-  "version": "0.0.1",
+  "name": "@chist/swag-api",
+  "version": "0.0.5",
   "description": "swagger.json to ts api",
   "main": "index.js",
   "bin": {
-    "swagApi": "node ./index.js"
+    "swagApi": "./index.js"
   },
   "keywords": [
     "swagger"
