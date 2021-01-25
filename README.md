@@ -11,6 +11,6 @@ yarn install
 #### create
 
 ```bash
-yarn api
+swagApi create https://example.com/swagger/swagger.json ./dist/api.ts
 ```
 

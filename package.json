@@ -2,9 +2,9 @@
   "name": "swapi",
   "version": "0.0.1",
   "description": "",
-  "main": "/src/index.js",
-  "scripts": {
-    "api": "node src/index create https://example.com/swagger/swagger.json ./dist/api.ts"
+  "main": "index.js",
+  "bin": {
+    "swagApi": "node ./index.js"
   },
   "keywords": [
     "swagger"
