@@ -6,6 +6,6 @@ const program = new Command();
 program
   .version('0.0.1', '-V, --version')
   .command('create <url> <path>')
-  .action(require('./create'));
+  .action(require('./src/create'));
 
 program.parse(process.argv);
