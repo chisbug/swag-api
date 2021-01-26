@@ -16,7 +16,7 @@ npm install -g @chist/swag-api
 >
 > 命令说明:
 >
-> create <swagger url> <filepath>
+> create \<swagger url> \<filepath>
 >
 > ​	swagger url: swagger.json的url
 >
