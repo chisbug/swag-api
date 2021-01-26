@@ -46,7 +46,7 @@ module.exports = async (url, filePath, opts) => {
         return;
       }
 
-      logB(`🗄️  Create api.ts: ${path.resolve('./', filePath)}`);
+      logB(`🗄️  Create api.ts: ${path.resolve(__dirname, filePath)}`);
       logG(`✔️  Completed!`);
       console.log(
         '---------------------------------------------------------------------------------'
