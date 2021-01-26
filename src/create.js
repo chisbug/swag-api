@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
-const request = require('./request');
+const axios = require('axios');
 const generate = require('./generate');
 const util = require('./util');
 
@@ -15,27 +15,42 @@ const logB = (content) => {
   console.log(chalk.blue(content));
 };
 
-module.exports = async (url, filePath) => {
-  console.log('---------------------------------------------------------------------');
-  logY('📎 获取swagger.json: ' + url);
+module.exports = async (url, filePath, opts) => {
+  console.log('---------------------------------------------------------------------------------');
+  logY('📎 Get swagger.json: ' + url);
 
-  const dataJson = await request(url);
+  const dataJson = await axios.get(url).then((res) => {
+    return res.data;
+  });
   const result = generate(dataJson);
 
-  logG('⚙️  开始生成代码');
+  logG('⚙️  Wroking...');
 
   try {
+    // check folder exits
     await util.exitsFolder(path.dirname(filePath));
 
+    // copy request.ts
+    if (opts.request) {
+      const fromFile = path.resolve(__dirname, './request.ts');
+      const toFile = path.resolve(path.dirname(filePath), './request.ts');
+      fs.copyFile(fromFile, toFile, 0, () => {
+        logB(`🗄️  Create request.ts: ${toFile}`);
+      });
+    }
+
+    // create api.ts
     fs.writeFile(filePath, result, 'utf8', (err) => {
       if (err !== null) {
         console.log(err);
         return;
       }
 
-      logB(`🗄️  文件已保存在: ${path.resolve('./', filePath)}`);
-      logB(`✔️  完成`);
-      console.log('---------------------------------------------------------------------');
+      logB(`🗄️  Create api.ts: ${path.resolve('./', filePath)}`);
+      logG(`✔️  Completed!`);
+      console.log(
+        '---------------------------------------------------------------------------------'
+      );
     });
   } catch (e) {
     throw Error(e.msg);

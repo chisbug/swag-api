@@ -25,7 +25,7 @@ module.exports = function generate(json) {
  * @param resultJson: {}
  */
 function analysisResult(resultJson) {
-  let result = `import request from './request';${os.EOL}${os.EOL}`;
+  let result = `import qs from 'qs';${os.EOL}import request from './request';${os.EOL}${os.EOL}`;
 
   const interfaceStr = createStringFromInterfaceJSON(resultJson.interfaceData);
   const functionStr = createStringFromFunctionJSON(resultJson.functionData);
@@ -68,6 +68,16 @@ function createStringFromInterfaceJSON(data) {
 function createStringFromFunctionJSON(data) {
   let result = '';
   data.forEach((item) => {
+    const paramsArg = item.reqType === '' ? '' : `params: ${item.reqType}`;
+    const paramsBody =
+      item.reqType === ''
+        ? ''
+        : `, ${
+            item.requestType === 'application/json'
+              ? 'params: JSON.stringify(params)'
+              : 'params: qs.stringify(params)'
+          }`;
+
     result += item.summary
       ? `${os.EOL}/** 
  * @function ${item.summary}${
@@ -75,10 +85,10 @@ function createStringFromFunctionJSON(data) {
         }
  */${os.EOL}`
       : '';
-    result += `export const ${item.name} = () => {
+    result += `export const ${item.name} = (${paramsArg}) => {
   return request.${item.method}<${item.reqType || '{}'}, ${item.resType}>('${
       item.path
-    }', { bodyType: '${item.requestType}' });
+    }', { headers: {'Content-Type': '${item.requestType}'}${paramsBody} });
 };${os.EOL}`;
   });
 
@@ -151,7 +161,10 @@ function analysisPaths(paths, resultJson) {
         name: `${pathMethod}${util.generateCamelName(pathName)}`,
         path: pathName,
         method: pathMethod,
-        requestType: pathConsume === 'application/x-www-form-urlencoded' ? 'formData' : 'json',
+        requestType:
+          pathConsume === 'application/x-www-form-urlencoded'
+            ? 'application/x-www-form-urlencoded'
+            : 'application/json',
         reqType: requestInterfaceName,
         resType: responseInterfaceName,
       };
