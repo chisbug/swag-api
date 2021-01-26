@@ -1,6 +1,6 @@
 {
   "name": "@chist/swag-api",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "swagger.json to ts api",
   "main": "index.js",
   "repository": {
@@ -18,6 +18,7 @@
   "dependencies": {
     "axios": "^0.21.1",
     "chalk": "^4.1.0",
-    "commander": "^7.0.0"
+    "commander": "^7.0.0",
+    "qs": "^6.9.6"
   }
 }

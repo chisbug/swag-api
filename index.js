@@ -5,7 +5,7 @@ const create = require('./src/create');
 const program = new Command();
 
 program
-  .version('0.0.8', '-v, --version')
+  .version('0.0.9', '-v, --version')
   .option(
     '-r, --request',
     '如需生成request.ts模板文件, 请使用此参数, 否则勿传, 以免覆盖已有文件!',
